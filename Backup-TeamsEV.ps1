@@ -1,53 +1,64 @@
 <#
-.SYNOPSIS
-A script to automatically backup a Microsoft Teams Enterprise Voice configuration.
-
-.DESCRIPTION
-Automates the backup of Microsoft Teams Enterprise Voice normalization rules, dialplans, voice policies, voice routes, PSTN usages and PSTN GW translation rules for various countries.
-
-.PARAMETER OverrideAdminDomain
-OPTIONAL: The FQDN your Office365 tenant. Use if your admin account is not in the same domain as your tenant (ie. doesn't use a @tenantname.onmicrosoft.com address)
-
-Version 1.00
-Build: Feb 04, 2020
-
-Copyright Â© 2020  Ken Lasko  
-klasko@ucdialplans.com
-https://www.ucdialplans.com
+	.SYNOPSIS
+		A script to automatically backup a Microsoft Teams Enterprise Voice configuration.
+	
+	.DESCRIPTION
+		Automates the backup of Microsoft Teams Enterprise Voice normalization rules, dialplans, voice policies, voice routes, PSTN usages and PSTN GW translation rules for various countries.
+	
+	.PARAMETER OverrideAdminDomain
+		OPTIONAL: The FQDN your Office365 tenant. Use if your admin account is not in the same domain as your tenant (ie. doesn't use a @tenantname.onmicrosoft.com address)
+		
+		Version 1.00
+		Build: Feb 04, 2020
+		
+		Copyright © 2020  Ken Lasko
+		klasko@ucdialplans.com
+		https://www.ucdialplans.com
+	
+	.NOTES
+		Additional information about the file.
 #>
-
-# The below settings are for applying command line options for unattended script application
-param (
-	# Input the OverrideAdminDomain. Use if you normally have to enter your onmicrosoft.com domain name when signing onto O365
-	[Parameter(ValueFromPipeline = $False, ValueFromPipelineByPropertyName = $True)]
+[CmdletBinding(ConfirmImpact = 'None')]
+param
+(
+	[Parameter(ValueFromPipelineByPropertyName)]
 	[ValidateNotNullOrEmpty()]
-	[string] $OverrideAdminDomain
+	[string]
+	$OverrideAdminDomain
 )
 
-$Filenames = "Dialplans.txt", "VoiceRoutes.txt", "VoiceRoutingPolicies.txt", "PSTNUsages.txt", "TranslationRules.txt", "PSTNGateways.txt"
+$Filenames = 'Dialplans.txt', 'VoiceRoutes.txt', 'VoiceRoutingPolicies.txt', 'PSTNUsages.txt', 'TranslationRules.txt', 'PSTNGateways.txt'
 
-If ((Get-PSSession).State -eq 'Opened') {
-	Write-Host 'Using existing session credentials'}
-Else {
-	Write-Host "Logging into Office 365..."
+if ((Get-PSSession | Where-Object -FilterScript {
+			$_.ComputerName -like '*.online.lync.com'
+		}).State -eq 'Opened')
+{
+	Write-Host -Object 'Using existing session credentials'
+}
+else
+{
+	Write-Host -Object 'Logging into Office 365...'
 	$O365Session = New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain
-	Import-PSSession $O365Session -AllowClobber
+	$null = (Import-PSSession -Session $O365Session -AllowClobber)
 }
 
-Try {
-	Get-CsTenantDialPlan | ConvertTo-Json | Out-File Dialplans.txt
-	Get-CsOnlineVoiceRoute | ConvertTo-Json | Out-File VoiceRoutes.txt
-	Get-CsOnlineVoiceRoutingPolicy | ConvertTo-Json | Out-File VoiceRoutingPolicies.txt
-	Get-CsOnlinePstnUsage | ConvertTo-Json | Out-File PSTNUsages.txt
-	Get-CsTeamsTranslationRule | ConvertTo-Json | Out-File TranslationRules.txt
-	Get-CsOnlinePSTNGateway | ConvertTo-Json | Out-File PSTNGateways.txt
+try
+{
+	$null = (Get-CsTenantDialPlan | ConvertTo-Json | Out-File -FilePath Dialplans.txt -Force -Encoding utf8)
+	$null = (Get-CsOnlineVoiceRoute | ConvertTo-Json | Out-File -FilePath VoiceRoutes.txt -Force -Encoding utf8)
+	$null = (Get-CsOnlineVoiceRoutingPolicy | ConvertTo-Json | Out-File -FilePath VoiceRoutingPolicies.txt -Force -Encoding utf8)
+	$null = (Get-CsOnlinePstnUsage | ConvertTo-Json | Out-File -FilePath PSTNUsages.txt -Force -Encoding utf8)
+	$null = (Get-CsTeamsTranslationRule | ConvertTo-Json | Out-File -FilePath TranslationRules.txt -Force -Encoding utf8)
+	$null = (Get-CsOnlinePSTNGateway | ConvertTo-Json | Out-File -FilePath PSTNGateways.txt -Force -Encoding utf8)
 }
-Catch {
-	Write-Error "There was an error backing up the MS Teams Enterprise Voice configuration."
-	Exit
+catch
+{
+	Write-Error -Message 'There was an error backing up the MS Teams Enterprise Voice configuration.'
+	exit
 }
 
-Compress-Archive -Path $FileNames -DestinationPath "TeamsEVBackup_$(get-date -f yyyy-MM-dd).zip" -Force
-Remove-Item $Filenames
+$BackupFile = ('TeamsEVBackup_' + (Get-Date -Format yyyy-MM-dd) + '.zip')
+$null = (Compress-Archive -Path $Filenames -DestinationPath $BackupFile -Force)
+$null = (Remove-Item -Path $Filenames -Force -Confirm:$false)
 
-Write-Host "Microsoft Teams Enterprise Voice configuration backed up to TeamsEVBackup_$(get-date -f yyyy-MM-dd).zip"
+Write-Host -Object ('Microsoft Teams Enterprise Voice configuration backed up to {0}' -f $BackupFile)
