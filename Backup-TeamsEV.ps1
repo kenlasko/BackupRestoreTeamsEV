@@ -24,8 +24,6 @@ param (
 	[string] $OverrideAdminDomain
 )
 
-$Error.Clear()
-
 $Filenames = "Dialplans.txt", "VoiceRoutes.txt", "VoiceRoutingPolicies.txt", "PSTNUsages.txt", "TranslationRules.txt", "PSTNGateways.txt"
 
 If ((Get-PSSession).State -eq 'Opened') {
