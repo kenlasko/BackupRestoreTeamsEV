@@ -12,7 +12,7 @@
 		Version 1.00
 		Build: Feb 04, 2020
 		
-		Copyright © 2020  Ken Lasko
+		Copyright Â© 2020  Ken Lasko
 		klasko@ucdialplans.com
 		https://www.ucdialplans.com
 #>
@@ -27,33 +27,29 @@ param
 
 $Filenames = 'Dialplans.txt', 'VoiceRoutes.txt', 'VoiceRoutingPolicies.txt', 'PSTNUsages.txt', 'TranslationRules.txt', 'PSTNGateways.txt'
 
-if ((Get-PSSession | Where-Object -FilterScript {
+If ((Get-PSSession | Where-Object -FilterScript {
          $_.ComputerName -like '*.online.lync.com'
-}).State -eq 'Opened')
-{
+}).State -eq 'Opened') {
    Write-Host -Object 'Using existing session credentials'
-}
-else
-{
+} 
+Else {
    Write-Host -Object 'Logging into Office 365...'
    
    $O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
    $null = (Import-PSSession -Session $O365Session -AllowClobber)
 }
 
-try
-{
+Try {
 	$null = (Get-CsTenantDialPlan | ConvertTo-Json | Out-File -FilePath Dialplans.txt -Force -Encoding utf8)
 	$null = (Get-CsOnlineVoiceRoute | ConvertTo-Json | Out-File -FilePath VoiceRoutes.txt -Force -Encoding utf8)
 	$null = (Get-CsOnlineVoiceRoutingPolicy | ConvertTo-Json | Out-File -FilePath VoiceRoutingPolicies.txt -Force -Encoding utf8)
 	$null = (Get-CsOnlinePstnUsage | ConvertTo-Json | Out-File -FilePath PSTNUsages.txt -Force -Encoding utf8)
 	$null = (Get-CsTeamsTranslationRule | ConvertTo-Json | Out-File -FilePath TranslationRules.txt -Force -Encoding utf8)
 	$null = (Get-CsOnlinePSTNGateway | ConvertTo-Json | Out-File -FilePath PSTNGateways.txt -Force -Encoding utf8)
-}
-catch
-{
+} 
+Catch {
 	Write-Error -Message 'There was an error backing up the MS Teams Enterprise Voice configuration.'
-	exit
+	Exit
 }
 
 $BackupFile = ('TeamsEVBackup_' + (Get-Date -Format yyyy-MM-dd) + '.zip')
