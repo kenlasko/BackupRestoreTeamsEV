@@ -20,7 +20,6 @@
 param
 (
 	[Parameter(ValueFromPipelineByPropertyName)]
-	[ValidateNotNullOrEmpty()]
 	[string]
 	$OverrideAdminDomain
 )
@@ -30,13 +29,18 @@ $Filenames = 'Dialplans.txt', 'VoiceRoutes.txt', 'VoiceRoutingPolicies.txt', 'PS
 If ((Get-PSSession | Where-Object -FilterScript {
          $_.ComputerName -like '*.online.lync.com'
 }).State -eq 'Opened') {
-   Write-Host -Object 'Using existing session credentials'
+	Write-Host -Object 'Using existing session credentials'
 } 
 Else {
-   Write-Host -Object 'Logging into Office 365...'
+	Write-Host -Object 'Logging into Office 365...'
    
-   $O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
-   $null = (Import-PSSession -Session $O365Session -AllowClobber)
+	If ($OverrideAdminDomain) {
+		$O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
+	}
+	Else {
+		$O365Session = (New-CsOnlineSession)
+	}
+	$null = (Import-PSSession -Session $O365Session -AllowClobber)
 }
 
 Try {
