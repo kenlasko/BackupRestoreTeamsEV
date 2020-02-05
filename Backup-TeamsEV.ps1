@@ -9,7 +9,7 @@
 		OPTIONAL: The FQDN your Office365 tenant. Use if your admin account is not in the same domain as your tenant (ie. doesn't use a @tenantname.onmicrosoft.com address)
 
 	.NOTES
-		Version 1.00
+		Version 1.10
 		Build: Feb 04, 2020
 		
 		Copyright © 2020  Ken Lasko
