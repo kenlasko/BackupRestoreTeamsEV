@@ -1,78 +1,70 @@
 <#
-      .SYNOPSIS
-      A script to automatically restore a backed-up Teams Enterprise Voice configuration.
-	
-      .DESCRIPTION
-      A script to automatically restore a backed-up Teams Enterprise Voice configuration. Requires a backup run using Backup-TeamsEV.ps1 in the same directory as the script. Will restore the following items:
-      - Dialplans and associated normalization rules
-      - Voice routes
-      - Voice routing policies
-      - PSTN usages
-      - Outbound translation rules
-		
-      The script must be run from a Skype for Business server.
-		
-      User running the script must have the following roles at minimum:
-      - member of the local Administrators group on all SfB and associated servers
-      - ability to add user accounts and groups to the domain (depending on selected options)
-      - at least CSViewOnlyAdministrator rights in SfB. CSAdministrator role required for some selected options
-      - read rights to any SQL server associated with SfB
-	
-      .PARAMETER File
-      REQUIRED. Path to the zip file containing the backed up Teams EV config to restore
-	
-      .PARAMETER KeepExisting
-      OPTIONAL. Will not erase existing Enterprise Voice configuration before restoring.
-	
-      .PARAMETER OverrideAdminDomain
-      OPTIONAL: The FQDN your Office365 tenant. Use if your admin account is not in the same domain as your tenant (ie. doesn't use a @tenantname.onmicrosoft.com address)
+	.SYNOPSIS
+		A script to automatically restore a backed-up Teams Enterprise Voice configuration.
 
-      .NOTES
-      Version 1.00
-      Build: Feb 04, 2020
+	.DESCRIPTION
+		A script to automatically restore a backed-up Teams Enterprise Voice configuration. Requires a backup run using Backup-TeamsEV.ps1 in the same directory as the script. Will restore the following items:
+		- Dialplans and associated normalization rules
+		- Voice routes
+		- Voice routing policies
+		- PSTN usages
+		- Outbound translation rules
 
-      Copyright © 2020  Ken Lasko
-      klasko@ucdialplans.com
-      https://www.ucdialplans.com
+	.PARAMETER File
+		REQUIRED. Path to the zip file containing the backed up Teams EV config to restore
+
+	.PARAMETER KeepExisting
+		OPTIONAL. Will not erase existing Enterprise Voice configuration before restoring.
+
+	.PARAMETER OverrideAdminDomain
+		OPTIONAL: The FQDN your Office365 tenant. Use if your admin account is not in the same domain as your tenant (ie. doesn't use a @tenantname.onmicrosoft.com address)
+
+	.NOTES
+		Version 1.00
+		Build: Feb 04, 2020
+
+		Copyright © 2020  Ken Lasko
+		klasko@ucdialplans.com
+		https://www.ucdialplans.com
 #>
 
 [CmdletBinding(ConfirmImpact = 'Medium',
 SupportsShouldProcess)]
 param
 (
-   [Parameter(Mandatory, HelpMessage = 'Path to the zip file containing the backed up Teams EV config to restore',
-   ValueFromPipelineByPropertyName)]
-   [string]
-   $File,
-   [switch]
-   $KeepExisting,
-   [string]
-   $OverrideAdminDomain
+	[Parameter(Mandatory, HelpMessage = 'Path to the zip file containing the backed up Teams EV config to restore',
+	ValueFromPipelineByPropertyName)]
+	[string]
+	$File,
+	[switch]
+	$KeepExisting,
+	[string]
+	$OverrideAdminDomain
 )
 
 Try {
-   $ZipPath = (Resolve-Path -Path $File)
-   $null = (Add-Type -AssemblyName System.IO.Compression.FileSystem)
-   $ZipStream = [io.compression.zipfile]::OpenRead($ZipPath)
+	$ZipPath = (Resolve-Path -Path $File)
+	$null = (Add-Type -AssemblyName System.IO.Compression.FileSystem)
+	$ZipStream = [io.compression.zipfile]::OpenRead($ZipPath)
 }
 Catch {
-   Write-Error -Message 'Could not open zip archive.' -ErrorAction Stop
-   Exit
+	Write-Error -Message 'Could not open zip archive.' -ErrorAction Stop
+	Exit
 }
 
 If ((Get-PSSession | Where-Object -FilterScript {$_.ComputerName -like '*.online.lync.com'}).State -eq 'Opened') {
-   Write-Host -Object 'Using existing session credentials'
+	Write-Host -Object 'Using existing session credentials'
 }
 Else {
-   Write-Host -Object 'Logging into Office 365...'
-   
-   If ($OverrideAdminDomain) {
-      $O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
-   }
-   Else {
-      $O365Session = (New-CsOnlineSession)
-   }
-   $null = (Import-PSSession -Session $O365Session -AllowClobber)
+	Write-Host -Object 'Logging into Office 365...'
+
+	If ($OverrideAdminDomain) {
+		$O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
+	}
+	Else {
+		$O365Session = (New-CsOnlineSession)
+	}
+	$null = (Import-PSSession -Session $O365Session -AllowClobber)
 }
 
 $EV_Entities = 'Dialplans', 'VoiceRoutes', 'VoiceRoutingPolicies', 'PSTNUsages', 'TranslationRules', 'PSTNGateways'
@@ -80,20 +72,20 @@ $EV_Entities = 'Dialplans', 'VoiceRoutes', 'VoiceRoutingPolicies', 'PSTNUsages',
 Write-Host -Object 'Validating backup files.'
 
 ForEach ($EV_Entity in $EV_Entities) {
-   Try {
-      $ZipItem = $ZipStream.GetEntry("$EV_Entity.txt")
-      $ItemReader = (New-Object -TypeName System.IO.StreamReader -ArgumentList ($ZipItem.Open()))
-		
-      $null = (Set-Variable -Name $EV_Entity -Value ($ItemReader.ReadToEnd() | ConvertFrom-Json))
-		
-      If ((Get-Variable -Name $EV_Entity).Value[0].Identity -eq $NULL) {
-         Throw ('Error')
-      } # Throw error if there is no Identity field, which indicates this isn't a proper backup file
-   }
-   Catch {
-      Write-Error -Message ($EV_Entity + ".txt could not be found or could not be parsed. Exiting.") -ErrorAction Stop
-      Exit
-   }
+	Try {
+		$ZipItem = $ZipStream.GetEntry("$EV_Entity.txt")
+		$ItemReader = (New-Object -TypeName System.IO.StreamReader -ArgumentList ($ZipItem.Open()))
+
+		$null = (Set-Variable -Name $EV_Entity -Value ($ItemReader.ReadToEnd() | ConvertFrom-Json))
+
+		If ((Get-Variable -Name $EV_Entity).Value[0].Identity -eq $NULL) {
+			Throw ('Error')
+		} # Throw error if there is no Identity field, which indicates this isn't a proper backup file
+	}
+	Catch {
+		Write-Error -Message ($EV_Entity + ".txt could not be found or could not be parsed. Exiting.") -ErrorAction Stop
+		Exit
+	}
 }
 
 Write-Host -ForegroundColor Green -Object 'Backup files are OK!'
