@@ -35,6 +35,7 @@
       klasko@ucdialplans.com
       https://www.ucdialplans.com
 #>
+
 [CmdletBinding(ConfirmImpact = 'Medium',
 SupportsShouldProcess)]
 param
@@ -59,9 +60,7 @@ Catch {
    Exit
 }
 
-If ((Get-PSSession | Where-Object -FilterScript {
-         $_.ComputerName -like '*.online.lync.com'
-}).State -eq 'Opened') {
+If ((Get-PSSession | Where-Object -FilterScript {$_.ComputerName -like '*.online.lync.com'}).State -eq 'Opened') {
    Write-Host -Object 'Using existing session credentials'
 }
 Else {
@@ -120,6 +119,7 @@ If (!$KeepExisting) {
 Write-Host -Object 'Restoring tenant dialplans'
 
 ForEach ($Dialplan in $Dialplans) {
+	Write-Verbose "Restoring $Dialplan.Identity dialplan"
 	$DPExists = (Get-CsTenantDialPlan -Identity $Dialplan.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
 
 	$DPDetails = @{
@@ -154,22 +154,22 @@ ForEach ($Dialplan in $Dialplans) {
 		}
 		$NormRules += New-CsVoiceNormalizationRule @NRDetails -InMemory
 	}
-   $null = (Set-CsTenantDialPlan -Identity $Dialplan.Identity -NormalizationRules $NormRules)
+	$null = (Set-CsTenantDialPlan -Identity $Dialplan.Identity -NormalizationRules $NormRules)
 }
 
 # Rebuild PSTN usages from backup
 Write-Host -Object 'Restoring PSTN usages'
 
 ForEach ($PSTNUsage in $PSTNUsages.Usage) {
-   $null = (Set-CsOnlinePstnUsage -Identity Global -Usage @{
-         Add = $PSTNUsage
-   } -WarningAction SilentlyContinue -ErrorAction SilentlyContinue)
+	Write-Verbose "Restoring $PSTNUsage PSTN usage"
+	$null = (Set-CsOnlinePstnUsage -Identity Global -Usage @{Add = $PSTNUsage} -WarningAction SilentlyContinue -ErrorAction SilentlyContinue)
 }
 
 # Rebuild voice routes from backup
 Write-Host -Object 'Restoring voice routes'
 
 ForEach ($VoiceRoute in $VoiceRoutes) {
+	Write-Verbose "Restoring $VoiceRoute.Identity voice route"
 	$VRExists = (Get-CsOnlineVoiceRoute -Identity $VoiceRoute.Identity -ErrorAction SilentlyContinue).Identity
 
 	$VRDetails = @{
@@ -193,6 +193,7 @@ ForEach ($VoiceRoute in $VoiceRoutes) {
 Write-Host -Object 'Restoring voice routing policies'
 
 ForEach ($VoiceRoutingPolicy in $VoiceRoutingPolicies) {
+	Write-Verbose "Restoring $VoiceRoutingPolicy.Identity voice routing policy"
 	$VPExists = (Get-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -ErrorAction SilentlyContinue).Identity
 
 	$VPDetails = @{
@@ -213,6 +214,7 @@ ForEach ($VoiceRoutingPolicy in $VoiceRoutingPolicies) {
 Write-Host -Object 'Restoring outbound translation rules'
 
 ForEach ($TranslationRule in $TranslationRules) {
+	Write-Verbose "Restoring $TranslationRule.Identity translation rule"
 	$TRExists = (Get-CsTeamsTranslationRule -Identity $TranslationRule.Identity -ErrorAction SilentlyContinue).Identity
 	
 	$TRDetails = @{
@@ -223,10 +225,10 @@ ForEach ($TranslationRule in $TranslationRules) {
 	}
 
 	If ($TRExists) {
-	$null = (Set-CsTeamsTranslationRule @TRDetails)
+		$null = (Set-CsTeamsTranslationRule @TRDetails)
 	}
 	Else {
-	$null = (New-CsTeamsTranslationRule @TRDetails)
+		$null = (New-CsTeamsTranslationRule @TRDetails)
 	}
 }
 
@@ -234,6 +236,7 @@ ForEach ($TranslationRule in $TranslationRules) {
 Write-Host -Object 'Re-adding translation rules to PSTN gateways'
 
 ForEach ($PSTNGateway in $PSTNGateways) {
+	Write-Verbose "Restoring translation rules to $PSTNGateway.Identity"
 	$GWExists = (Get-CsOnlinePSTNGateway -Identity $PSTNGateway.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
 	
 	$GWDetails = @{
