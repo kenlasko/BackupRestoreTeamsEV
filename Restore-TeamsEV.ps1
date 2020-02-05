@@ -119,7 +119,7 @@ If (!$KeepExisting) {
 Write-Host -Object 'Restoring tenant dialplans'
 
 ForEach ($Dialplan in $Dialplans) {
-	Write-Verbose "Restoring $Dialplan.Identity dialplan"
+	Write-Verbose "Restoring $($Dialplan.Identity) dialplan"
 	$DPExists = (Get-CsTenantDialPlan -Identity $Dialplan.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
 
 	$DPDetails = @{
@@ -169,7 +169,7 @@ ForEach ($PSTNUsage in $PSTNUsages.Usage) {
 Write-Host -Object 'Restoring voice routes'
 
 ForEach ($VoiceRoute in $VoiceRoutes) {
-	Write-Verbose "Restoring $VoiceRoute.Identity voice route"
+	Write-Verbose "Restoring $($VoiceRoute.Identity) voice route"
 	$VRExists = (Get-CsOnlineVoiceRoute -Identity $VoiceRoute.Identity -ErrorAction SilentlyContinue).Identity
 
 	$VRDetails = @{
@@ -193,7 +193,7 @@ ForEach ($VoiceRoute in $VoiceRoutes) {
 Write-Host -Object 'Restoring voice routing policies'
 
 ForEach ($VoiceRoutingPolicy in $VoiceRoutingPolicies) {
-	Write-Verbose "Restoring $VoiceRoutingPolicy.Identity voice routing policy"
+	Write-Verbose "Restoring $($VoiceRoutingPolicy.Identity) voice routing policy"
 	$VPExists = (Get-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -ErrorAction SilentlyContinue).Identity
 
 	$VPDetails = @{
@@ -214,7 +214,7 @@ ForEach ($VoiceRoutingPolicy in $VoiceRoutingPolicies) {
 Write-Host -Object 'Restoring outbound translation rules'
 
 ForEach ($TranslationRule in $TranslationRules) {
-	Write-Verbose "Restoring $TranslationRule.Identity translation rule"
+	Write-Verbose "Restoring $($TranslationRule.Identity) translation rule"
 	$TRExists = (Get-CsTeamsTranslationRule -Identity $TranslationRule.Identity -ErrorAction SilentlyContinue).Identity
 	
 	$TRDetails = @{
@@ -236,7 +236,7 @@ ForEach ($TranslationRule in $TranslationRules) {
 Write-Host -Object 'Re-adding translation rules to PSTN gateways'
 
 ForEach ($PSTNGateway in $PSTNGateways) {
-	Write-Verbose "Restoring translation rules to $PSTNGateway.Identity"
+	Write-Verbose "Restoring translation rules to $($PSTNGateway.Identity)"
 	$GWExists = (Get-CsOnlinePSTNGateway -Identity $PSTNGateway.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
 	
 	$GWDetails = @{
