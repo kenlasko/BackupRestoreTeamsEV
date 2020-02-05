@@ -143,23 +143,23 @@ ForEach ($Dialplan in $Dialplans) {
 	# Create a new Object
 	$NormRules = @()
    
-   ForEach ($NormRule in $Dialplan.NormalizationRules) {
-      $Description = [regex]::Match($NormRule, '(?ms)^Description=(.*?);').Groups[1].Value
-      $Pattern = [regex]::Match($NormRule, '(?ms)Pattern=(.*?);').Groups[1].Value
-      $Translation = [regex]::Match($NormRule, '(?ms)Translation=(.*?);').Groups[1].Value
-      $Name = [regex]::Match($NormRule, '(?ms)Name=(.*?);').Groups[1].Value
-      $IsInternalExtension = [Convert]::ToBoolean([regex]::Match($NormRule, '(?ms)IsInternalExtension=(.*?)$').Groups[1].Value)
-		
-      $NormRules += New-CsVoiceNormalizationRule -Name $Name -Parent $Dialplan.Identity -Pattern $Pattern -Translation $Translation -Description $Description -InMemory -IsInternalExtension $IsInternalExtension
-   }
-	
+	ForEach ($NormRule in $Dialplan.NormalizationRules) {		
+		$NRDetails = @{
+			Parent = $Dialplan.Identity
+			Name = [regex]::Match($NormRule, '(?ms)Name=(.*?);').Groups[1].Value
+			Pattern = [regex]::Match($NormRule, '(?ms)Pattern=(.*?);').Groups[1].Value
+			Translation = [regex]::Match($NormRule, '(?ms)Translation=(.*?);').Groups[1].Value
+			Description = [regex]::Match($NormRule, '(?ms)^Description=(.*?);').Groups[1].Value
+			IsInternalExtension = [Convert]::ToBoolean([regex]::Match($NormRule, '(?ms)IsInternalExtension=(.*?)$').Groups[1].Value)
+		}
+		$NormRules += New-CsVoiceNormalizationRule @NRDetails -InMemory
+	}
    $null = (Set-CsTenantDialPlan -Identity $Dialplan.Identity -NormalizationRules $NormRules)
 }
 
 # Rebuild PSTN usages from backup
 Write-Host -Object 'Restoring PSTN usages'
 
-# $PSTNUsages is not defined
 ForEach ($PSTNUsage in $PSTNUsages.Usage) {
    $null = (Set-CsOnlinePstnUsage -Identity Global -Usage @{
          Add = $PSTNUsage
@@ -169,63 +169,83 @@ ForEach ($PSTNUsage in $PSTNUsages.Usage) {
 # Rebuild voice routes from backup
 Write-Host -Object 'Restoring voice routes'
 
-# $VoiceRoutes is not defined
 ForEach ($VoiceRoute in $VoiceRoutes) {
-   $VRExists = (Get-CsOnlineVoiceRoute -Identity $VoiceRoute.Identity -ErrorAction SilentlyContinue).Identity
+	$VRExists = (Get-CsOnlineVoiceRoute -Identity $VoiceRoute.Identity -ErrorAction SilentlyContinue).Identity
+
+	$VRDetails = @{
+		Identity = $VoiceRoute.Identity
+		NumberPattern = $VoiceRoute.NumberPattern
+		Priority = $VoiceRoute.Priority
+		OnlinePstnUsages = $VoiceRoute.OnlinePstnUsages
+		OnlinePstnGatewayList = $VoiceRoute.OnlinePstnGatewayList
+		Description = $VoiceRoute.Description
+	}
 	
-   If ($VRExists) {
-      # TODO: Splat
-      $null = (Set-CsOnlineVoiceRoute -Identity $VoiceRoute.Identity -NumberPattern $VoiceRoute.NumberPattern -Priority $VoiceRoute.Priority -OnlinePstnUsages $VoiceRoute.OnlinePstnUsages -OnlinePstnGatewayList $VoiceRoute.OnlinePstnGatewayList -Description $VoiceRoute.Description)
-   }
-   Else {
-      # TODO: Splat
-      $null = (New-CsOnlineVoiceRoute -Identity $VoiceRoute.Identity -NumberPattern $VoiceRoute.NumberPattern -Priority $VoiceRoute.Priority -OnlinePstnUsages $VoiceRoute.OnlinePstnUsages -OnlinePstnGatewayList $VoiceRoute.OnlinePstnGatewayList -Description $VoiceRoute.Description)
-   }
+	If ($VRExists) {
+		$null = (Set-CsOnlineVoiceRoute @VRDetails)
+	}
+	Else {
+		$null = (New-CsOnlineVoiceRoute @VRDetails)
+	}
 }
 
 # Rebuild voice routing policies from backup
 Write-Host -Object 'Restoring voice routing policies'
 
-# $VoiceRoutingPolicies is not defined
 ForEach ($VoiceRoutingPolicy in $VoiceRoutingPolicies) {
-   $VPExists = (Get-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -ErrorAction SilentlyContinue).Identity
-   If ($VPExists) {
-      # TODO: Splat
-      $null = (Set-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -OnlinePstnUsages $VoiceRoutingPolicy.OnlinePstnUsages -Description $VoiceRoutingPolicy.Description)
-   }
-   Else {
-      # TODO: Splat
-      $null = (New-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -OnlinePstnUsages $VoiceRoutingPolicy.OnlinePstnUsages -Description $VoiceRoutingPolicy.Description)
-   }
+	$VPExists = (Get-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -ErrorAction SilentlyContinue).Identity
+
+	$VPDetails = @{
+		Identity = $VoiceRoutingPolicy.Identity
+		OnlinePstnUsages = $VoiceRoutingPolicy.OnlinePstnUsages
+		Description = $VoiceRoutingPolicy.Description
+	}
+	
+	If ($VPExists) {
+		$null = (Set-CsOnlineVoiceRoutingPolicy @VPDetails)
+	}
+	Else {
+		$null = (New-CsOnlineVoiceRoutingPolicy @VPDetails)
+	}
 }
 
 # Rebuild outbound translation rules from backup
 Write-Host -Object 'Restoring outbound translation rules'
 
-# $TranslationRules is not defined
 ForEach ($TranslationRule in $TranslationRules) {
-   $TRExists = (Get-CsTeamsTranslationRule -Identity $TranslationRule.Identity -ErrorAction SilentlyContinue).Identity
-   If ($TRExists) {
-      # TODO: Splat
-      $null = (Set-CsTeamsTranslationRule -Identity $TranslationRule.Identity -Pattern $TranslationRule.Pattern -Translation $TranslationRule.Translation -Description $TranslationRule.Description)
-   }
-   Else {
-      # TODO: Splat
-      $null = (New-CsTeamsTranslationRule -Identity $TranslationRule.Identity -Pattern $TranslationRule.Pattern -Translation $TranslationRule.Translation -Description $TranslationRule.Description)
-   }
+	$TRExists = (Get-CsTeamsTranslationRule -Identity $TranslationRule.Identity -ErrorAction SilentlyContinue).Identity
+	
+	$TRDetails = @{
+		Identity = $TranslationRule.Identity
+		Pattern = $TranslationRule.Pattern
+		Translation = $TranslationRule.Translation
+		Description = $TranslationRule.Description
+	}
+
+	If ($TRExists) {
+	$null = (Set-CsTeamsTranslationRule @TRDetails)
+	}
+	Else {
+	$null = (New-CsTeamsTranslationRule @TRDetails)
+	}
 }
 
 # Re-add translation rules to PSTN gateways
 Write-Host -Object 'Re-adding translation rules to PSTN gateways'
 
-# $PSTNGateways is not defined
 ForEach ($PSTNGateway in $PSTNGateways) {
-   $GWExists = (Get-CsOnlinePSTNGateway -Identity $PSTNGateway.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
+	$GWExists = (Get-CsOnlinePSTNGateway -Identity $PSTNGateway.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
 	
-   If ($GWExists) {
-      # TODO: Splat
-      $null = (Set-CsOnlinePSTNGateway -Identity $PSTNGateway.Identity -OutbundTeamsNumberTranslationRules $PSTNGateway.OutbundTeamsNumberTranslationRules -OutboundPstnNumberTranslationRules $PSTNGateway.OutboundPstnNumberTranslationRules -InboundTeamsNumberTranslationRules $PSTNGateway.InboundTeamsNumberTranslationRules -InboundPstnNumberTranslationRules $PSTNGateway.InboundPstnNumberTranslationRules)
-   }
+	$GWDetails = @{
+		Identity = $PSTNGateway.Identity
+		OutbundTeamsNumberTranslationRules = $PSTNGateway.OutbundTeamsNumberTranslationRules #Sadly Outbund isn't a spelling mistake here. That's what the command uses.
+		OutboundPstnNumberTranslationRules = $PSTNGateway.OutboundPstnNumberTranslationRules 
+		InboundTeamsNumberTranslationRules = $PSTNGateway.InboundTeamsNumberTranslationRules
+		InboundPstnNumberTranslationRules = $PSTNGateway.InboundPstnNumberTranslationRules
+	}
+	If ($GWExists) {
+		$null = (Set-CsOnlinePSTNGateway @GWDetails)
+	}
 }
 
 Write-Host -Object 'Finished!'
