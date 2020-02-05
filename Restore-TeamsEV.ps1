@@ -100,49 +100,48 @@ ForEach ($EV_Entity in $EV_Entities) {
 Write-Host -ForegroundColor Green -Object 'Backup files are OK!'
 
 If (!$KeepExisting) {
-   $Confirm = Read-Host -Prompt 'WARNING: This will ERASE all existing dialplans/voice routes/policies etc prior to restoring from backup. Continue (Y/N)?'
-   If ($Confirm -notmatch '^[Yy]$') {
-      Write-Host -Object 'Exiting without making changes.'
-      Exit
-   }
+	$Confirm = Read-Host -Prompt 'WARNING: This will ERASE all existing dialplans/voice routes/policies etc prior to restoring from backup. Continue (Y/N)?'
+	If ($Confirm -notmatch '^[Yy]$') {
+		Write-Host -Object 'Exiting without making changes.'
+		Exit
+	}
 	
-   Write-Host -Object 'Erasing all existing dialplans/voice routes/policies etc.'
-	
-   $null = (Get-CsTenantDialPlan -ErrorAction SilentlyContinue | Remove-CsTenantDialPlan -ErrorAction SilentlyContinue)
-   $null = (Get-CsOnlineVoiceRoute -ErrorAction SilentlyContinue | Remove-CsOnlineVoiceRoute -ErrorAction )
-   $null = (Get-CsOnlineVoiceRoutingPolicy -ErrorAction SilentlyContinue | Remove-CsOnlineVoiceRoutingPolicy -ErrorAction SilentlyContinue)
-   $null = (Set-CsOnlinePstnUsage -Identity Global -Usage $NULL -ErrorAction SilentlyContinue)
-   $null = (Get-CsOnlinePSTNGateway -ErrorAction SilentlyContinue | Set-CsOnlinePSTNGateway -OutbundTeamsNumberTranslationRules $NULL -OutboundPstnNumberTranslationRules $NULL -ErrorAction SilentlyContinue)
-   $null = (Get-CsTeamsTranslationRule -ErrorAction SilentlyContinue | Remove-CsTeamsTranslationRule -ErrorAction SilentlyContinue)
+	Write-Host -Object 'Erasing all existing dialplans/voice routes/policies etc.'
+
+	$null = (Get-CsTenantDialPlan -ErrorAction SilentlyContinue | Remove-CsTenantDialPlan -ErrorAction SilentlyContinue)
+	$null = (Get-CsOnlineVoiceRoute -ErrorAction SilentlyContinue | Remove-CsOnlineVoiceRoute -ErrorAction SilentlyContinue)
+	$null = (Get-CsOnlineVoiceRoutingPolicy -ErrorAction SilentlyContinue | Remove-CsOnlineVoiceRoutingPolicy -ErrorAction SilentlyContinue)
+	$null = (Set-CsOnlinePstnUsage -Identity Global -Usage $NULL -ErrorAction SilentlyContinue)
+	$null = (Get-CsOnlinePSTNGateway -ErrorAction SilentlyContinue | Set-CsOnlinePSTNGateway -OutbundTeamsNumberTranslationRules $NULL -OutboundPstnNumberTranslationRules $NULL -ErrorAction SilentlyContinue)
+	$null = (Get-CsTeamsTranslationRule -ErrorAction SilentlyContinue | Remove-CsTeamsTranslationRule -ErrorAction SilentlyContinue)
 }
 
 # Rebuild tenant dialplans from backup
 Write-Host -Object 'Restoring tenant dialplans'
 
 ForEach ($Dialplan in $Dialplans) {
-   $DPExists = (Get-CsTenantDialPlan -OutVariable $Dialplan.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
+	$DPExists = (Get-CsTenantDialPlan -Identity $Dialplan.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
+
+	$DPDetails = @{
+		Identity = $Dialplan.Identity
+		OptimizeDeviceDialing = $Dialplan.OptimizeDeviceDialing
+		Description = $Dialplan.Description
+	}
 	
-   If ($DPExists) {
-      # TODO: Splat
-      $null = (Set-CsTenantDialPlan -Identity $Dialplan.Identity -OptimizeDeviceDialing $Dialplan.OptimizeDeviceDialing -Description $Dialplan.Description)
-		
-      If ($Dialplan.ExternalAccessPrefix) {
-         # Have to do this because MS won't allow $NULL or empty ExternalAccessPrefix, but is happy if you don't include it
-         $null = (Set-CsTenantDialPlan -Identity $Dialplan.Identity -ExternalAccessPrefix $Dialplan.ExternalAccessPrefix)
-      }
-   }
-   Else {
-      # TODO: Splat
-      $null = (New-CsTenantDialPlan -Identity $Dialplan.Identity -OptimizeDeviceDialing $Dialplan.OptimizeDeviceDialing -Description $Dialplan.Description)
-		
-      If ($Dialplan.ExternalAccessPrefix) {
-         # Have to do this because MS won't allow $NULL or empty ExternalAccessPrefix, but is happy if you don't include it
-         $null = (Set-CsTenantDialPlan -Identity $Dialplan.Identity -ExternalAccessPrefix $Dialplan.ExternalAccessPrefix)
-      }
-   }
-	
-   # Create a new Object
-   $NormRules = @()
+	# Only include the external access prefix if one is defined. MS throws an error if you pass a null/empty ExternalAccessPrefix
+	If ($Dialplan.ExternalAccessPrefix) {
+		$DPDetails.Add("ExternalAccessPrefix", $Dialplan.ExternalAccessPrefix)
+	}
+
+	If ($DPExists) {
+		$null = (Set-CsTenantDialPlan @DPDetails)
+	}
+	Else {
+		$null = (New-CsTenantDialPlan @DPDetails)
+	}	
+
+	# Create a new Object
+	$NormRules = @()
    
    ForEach ($NormRule in $Dialplan.NormalizationRules) {
       $Description = [regex]::Match($NormRule, '(?ms)^Description=(.*?);').Groups[1].Value
@@ -172,7 +171,7 @@ Write-Host -Object 'Restoring voice routes'
 
 # $VoiceRoutes is not defined
 ForEach ($VoiceRoute in $VoiceRoutes) {
-   $VRExists = (Get-CsOnlineVoiceRoute -OutVariable $VoiceRoute.Identity -ErrorAction SilentlyContinue).Identity
+   $VRExists = (Get-CsOnlineVoiceRoute -Identity $VoiceRoute.Identity -ErrorAction SilentlyContinue).Identity
 	
    If ($VRExists) {
       # TODO: Splat
@@ -189,7 +188,7 @@ Write-Host -Object 'Restoring voice routing policies'
 
 # $VoiceRoutingPolicies is not defined
 ForEach ($VoiceRoutingPolicy in $VoiceRoutingPolicies) {
-   $VPExists = (Get-CsOnlineVoiceRoutingPolicy -OutVariable $VoiceRoutingPolicy.Identity -ErrorAction SilentlyContinue).Identity
+   $VPExists = (Get-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -ErrorAction SilentlyContinue).Identity
    If ($VPExists) {
       # TODO: Splat
       $null = (Set-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -OnlinePstnUsages $VoiceRoutingPolicy.OnlinePstnUsages -Description $VoiceRoutingPolicy.Description)
@@ -205,7 +204,7 @@ Write-Host -Object 'Restoring outbound translation rules'
 
 # $TranslationRules is not defined
 ForEach ($TranslationRule in $TranslationRules) {
-   $TRExists = (Get-CsTeamsTranslationRule -OutVariable $TranslationRule.Identity -ErrorAction SilentlyContinue).Identity
+   $TRExists = (Get-CsTeamsTranslationRule -Identity $TranslationRule.Identity -ErrorAction SilentlyContinue).Identity
    If ($TRExists) {
       # TODO: Splat
       $null = (Set-CsTeamsTranslationRule -Identity $TranslationRule.Identity -Pattern $TranslationRule.Pattern -Translation $TranslationRule.Translation -Description $TranslationRule.Description)
@@ -221,7 +220,7 @@ Write-Host -Object 'Re-adding translation rules to PSTN gateways'
 
 # $PSTNGateways is not defined
 ForEach ($PSTNGateway in $PSTNGateways) {
-   $GWExists = (Get-CsOnlinePSTNGateway -OutVariable $PSTNGateway.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
+   $GWExists = (Get-CsOnlinePSTNGateway -Identity $PSTNGateway.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
 	
    If ($GWExists) {
       # TODO: Splat
