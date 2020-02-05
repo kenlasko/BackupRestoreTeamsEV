@@ -31,7 +31,7 @@
       Version 1.00
       Build: Feb 04, 2020
 
-      Copyright © 2020  Ken Lasko
+      Copyright Â© 2020  Ken Lasko
       klasko@ucdialplans.com
       https://www.ucdialplans.com
 #>
@@ -49,35 +49,28 @@ param
    $OverrideAdminDomain
 )
 
-try
-{
+Try {
    $ZipPath = (Resolve-Path -Path $File)
    $null = (Add-Type -AssemblyName System.IO.Compression.FileSystem)
    $ZipStream = [io.compression.zipfile]::OpenRead($ZipPath)
 }
-catch
-{
+Catch {
    Write-Error -Message 'Could not open zip archive.' -ErrorAction Stop
-   
-   exit
+   Exit
 }
 
-if ((Get-PSSession | Where-Object -FilterScript {
+If ((Get-PSSession | Where-Object -FilterScript {
          $_.ComputerName -like '*.online.lync.com'
-}).State -eq 'Opened')
-{
+}).State -eq 'Opened') {
    Write-Host -Object 'Using existing session credentials'
 }
-else
-{
+Else {
    Write-Host -Object 'Logging into Office 365...'
    
-   if ($OverrideAdminDomain)
-   {
+   If ($OverrideAdminDomain) {
       $O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
    }
-   else
-   {
+   Else {
       $O365Session = (New-CsOnlineSession)
    }
    $null = (Import-PSSession -Session $O365Session -AllowClobber)
@@ -87,38 +80,30 @@ $EV_Entities = 'Dialplans', 'VoiceRoutes', 'VoiceRoutingPolicies', 'PSTNUsages',
 
 Write-Host -Object 'Validating backup files.'
 
-foreach ($EV_Entity in $EV_Entities)
-{
-   try
-   {
+ForEach ($EV_Entity in $EV_Entities) {
+   Try {
       $ZipItem = $ZipStream.GetEntry("$EV_Entity.txt")
       $ItemReader = (New-Object -TypeName System.IO.StreamReader -ArgumentList ($ZipItem.Open()))
 		
       $null = (Set-Variable -Name $EV_Entity -Value ($ItemReader.ReadToEnd() | ConvertFrom-Json))
 		
-      if ((Get-Variable -Name $EV_Entity).Value[0].Identity -eq $NULL)
-      {
-         throw ('Error')
+      If ((Get-Variable -Name $EV_Entity).Value[0].Identity -eq $NULL) {
+         Throw ('Error')
       } # Throw error if there is no Identity field, which indicates this isn't a proper backup file
    }
-   catch
-   {
+   Catch {
       Write-Error -Message ($EV_Entity + ".txt could not be found or could not be parsed. Exiting.") -ErrorAction Stop
-      
-      exit
+      Exit
    }
 }
 
 Write-Host -ForegroundColor Green -Object 'Backup files are OK!'
 
-if (!$KeepExisting)
-{
+If (!$KeepExisting) {
    $Confirm = Read-Host -Prompt 'WARNING: This will ERASE all existing dialplans/voice routes/policies etc prior to restoring from backup. Continue (Y/N)?'
-   if ($Confirm -notmatch '^[Yy]$')
-   {
+   If ($Confirm -notmatch '^[Yy]$') {
       Write-Host -Object 'Exiting without making changes.'
-      
-      exit
+      Exit
    }
 	
    Write-Host -Object 'Erasing all existing dialplans/voice routes/policies etc.'
@@ -134,29 +119,23 @@ if (!$KeepExisting)
 # Rebuild tenant dialplans from backup
 Write-Host -Object 'Restoring tenant dialplans'
 
-foreach ($Dialplan in $Dialplans)
-{
-	
+ForEach ($Dialplan in $Dialplans) {
    $DPExists = (Get-CsTenantDialPlan -OutVariable $Dialplan.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
 	
-   if ($DPExists)
-   {
+   If ($DPExists) {
       # TODO: Splat
       $null = (Set-CsTenantDialPlan -Identity $Dialplan.Identity -OptimizeDeviceDialing $Dialplan.OptimizeDeviceDialing -Description $Dialplan.Description)
 		
-      if ($Dialplan.ExternalAccessPrefix)
-      {
+      If ($Dialplan.ExternalAccessPrefix) {
          # Have to do this because MS won't allow $NULL or empty ExternalAccessPrefix, but is happy if you don't include it
          $null = (Set-CsTenantDialPlan -Identity $Dialplan.Identity -ExternalAccessPrefix $Dialplan.ExternalAccessPrefix)
       }
    }
-   else
-   {
+   Else {
       # TODO: Splat
       $null = (New-CsTenantDialPlan -Identity $Dialplan.Identity -OptimizeDeviceDialing $Dialplan.OptimizeDeviceDialing -Description $Dialplan.Description)
 		
-      if ($Dialplan.ExternalAccessPrefix)
-      {
+      If ($Dialplan.ExternalAccessPrefix) {
          # Have to do this because MS won't allow $NULL or empty ExternalAccessPrefix, but is happy if you don't include it
          $null = (Set-CsTenantDialPlan -Identity $Dialplan.Identity -ExternalAccessPrefix $Dialplan.ExternalAccessPrefix)
       }
@@ -165,8 +144,7 @@ foreach ($Dialplan in $Dialplans)
    # Create a new Object
    $NormRules = @()
    
-   foreach ($NormRule in $Dialplan.NormalizationRules)
-   {
+   ForEach ($NormRule in $Dialplan.NormalizationRules) {
       $Description = [regex]::Match($NormRule, '(?ms)^Description=(.*?);').Groups[1].Value
       $Pattern = [regex]::Match($NormRule, '(?ms)Pattern=(.*?);').Groups[1].Value
       $Translation = [regex]::Match($NormRule, '(?ms)Translation=(.*?);').Groups[1].Value
@@ -183,8 +161,7 @@ foreach ($Dialplan in $Dialplans)
 Write-Host -Object 'Restoring PSTN usages'
 
 # $PSTNUsages is not defined
-foreach ($PSTNUsage in $PSTNUsages.Usage)
-{
+ForEach ($PSTNUsage in $PSTNUsages.Usage) {
    $null = (Set-CsOnlinePstnUsage -Identity Global -Usage @{
          Add = $PSTNUsage
    } -WarningAction SilentlyContinue -ErrorAction SilentlyContinue)
@@ -194,17 +171,14 @@ foreach ($PSTNUsage in $PSTNUsages.Usage)
 Write-Host -Object 'Restoring voice routes'
 
 # $VoiceRoutes is not defined
-foreach ($VoiceRoute in $VoiceRoutes)
-{
+ForEach ($VoiceRoute in $VoiceRoutes) {
    $VRExists = (Get-CsOnlineVoiceRoute -OutVariable $VoiceRoute.Identity -ErrorAction SilentlyContinue).Identity
 	
-   if ($VRExists)
-   {
+   If ($VRExists) {
       # TODO: Splat
       $null = (Set-CsOnlineVoiceRoute -Identity $VoiceRoute.Identity -NumberPattern $VoiceRoute.NumberPattern -Priority $VoiceRoute.Priority -OnlinePstnUsages $VoiceRoute.OnlinePstnUsages -OnlinePstnGatewayList $VoiceRoute.OnlinePstnGatewayList -Description $VoiceRoute.Description)
    }
-   else
-   {
+   Else {
       # TODO: Splat
       $null = (New-CsOnlineVoiceRoute -Identity $VoiceRoute.Identity -NumberPattern $VoiceRoute.NumberPattern -Priority $VoiceRoute.Priority -OnlinePstnUsages $VoiceRoute.OnlinePstnUsages -OnlinePstnGatewayList $VoiceRoute.OnlinePstnGatewayList -Description $VoiceRoute.Description)
    }
@@ -214,16 +188,13 @@ foreach ($VoiceRoute in $VoiceRoutes)
 Write-Host -Object 'Restoring voice routing policies'
 
 # $VoiceRoutingPolicies is not defined
-foreach ($VoiceRoutingPolicy in $VoiceRoutingPolicies)
-{
+ForEach ($VoiceRoutingPolicy in $VoiceRoutingPolicies) {
    $VPExists = (Get-CsOnlineVoiceRoutingPolicy -OutVariable $VoiceRoutingPolicy.Identity -ErrorAction SilentlyContinue).Identity
-   if ($VPExists)
-   {
+   If ($VPExists) {
       # TODO: Splat
       $null = (Set-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -OnlinePstnUsages $VoiceRoutingPolicy.OnlinePstnUsages -Description $VoiceRoutingPolicy.Description)
    }
-   else
-   {
+   Else {
       # TODO: Splat
       $null = (New-CsOnlineVoiceRoutingPolicy -Identity $VoiceRoutingPolicy.Identity -OnlinePstnUsages $VoiceRoutingPolicy.OnlinePstnUsages -Description $VoiceRoutingPolicy.Description)
    }
@@ -233,16 +204,13 @@ foreach ($VoiceRoutingPolicy in $VoiceRoutingPolicies)
 Write-Host -Object 'Restoring outbound translation rules'
 
 # $TranslationRules is not defined
-foreach ($TranslationRule in $TranslationRules)
-{
+ForEach ($TranslationRule in $TranslationRules) {
    $TRExists = (Get-CsTeamsTranslationRule -OutVariable $TranslationRule.Identity -ErrorAction SilentlyContinue).Identity
-   if ($TRExists)
-   {
+   If ($TRExists) {
       # TODO: Splat
       $null = (Set-CsTeamsTranslationRule -Identity $TranslationRule.Identity -Pattern $TranslationRule.Pattern -Translation $TranslationRule.Translation -Description $TranslationRule.Description)
    }
-   else
-   {
+   Else {
       # TODO: Splat
       $null = (New-CsTeamsTranslationRule -Identity $TranslationRule.Identity -Pattern $TranslationRule.Pattern -Translation $TranslationRule.Translation -Description $TranslationRule.Description)
    }
@@ -252,12 +220,10 @@ foreach ($TranslationRule in $TranslationRules)
 Write-Host -Object 'Re-adding translation rules to PSTN gateways'
 
 # $PSTNGateways is not defined
-foreach ($PSTNGateway in $PSTNGateways)
-{
+ForEach ($PSTNGateway in $PSTNGateways) {
    $GWExists = (Get-CsOnlinePSTNGateway -OutVariable $PSTNGateway.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
 	
-   if ($GWExists)
-   {
+   If ($GWExists) {
       # TODO: Splat
       $null = (Set-CsOnlinePSTNGateway -Identity $PSTNGateway.Identity -OutbundTeamsNumberTranslationRules $PSTNGateway.OutbundTeamsNumberTranslationRules -OutboundPstnNumberTranslationRules $PSTNGateway.OutboundPstnNumberTranslationRules -InboundTeamsNumberTranslationRules $PSTNGateway.InboundTeamsNumberTranslationRules -InboundPstnNumberTranslationRules $PSTNGateway.InboundPstnNumberTranslationRules)
    }
