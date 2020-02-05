@@ -7,16 +7,14 @@
 	
 	.PARAMETER OverrideAdminDomain
 		OPTIONAL: The FQDN your Office365 tenant. Use if your admin account is not in the same domain as your tenant (ie. doesn't use a @tenantname.onmicrosoft.com address)
-		
+
+	.NOTES
 		Version 1.00
 		Build: Feb 04, 2020
 		
 		Copyright © 2020  Ken Lasko
 		klasko@ucdialplans.com
 		https://www.ucdialplans.com
-	
-	.NOTES
-		Additional information about the file.
 #>
 [CmdletBinding(ConfirmImpact = 'None')]
 param
@@ -30,16 +28,17 @@ param
 $Filenames = 'Dialplans.txt', 'VoiceRoutes.txt', 'VoiceRoutingPolicies.txt', 'PSTNUsages.txt', 'TranslationRules.txt', 'PSTNGateways.txt'
 
 if ((Get-PSSession | Where-Object -FilterScript {
-			$_.ComputerName -like '*.online.lync.com'
-		}).State -eq 'Opened')
+         $_.ComputerName -like '*.online.lync.com'
+}).State -eq 'Opened')
 {
-	Write-Host -Object 'Using existing session credentials'
+   Write-Host -Object 'Using existing session credentials'
 }
 else
 {
-	Write-Host -Object 'Logging into Office 365...'
-	$O365Session = New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain
-	$null = (Import-PSSession -Session $O365Session -AllowClobber)
+   Write-Host -Object 'Logging into Office 365...'
+   
+   $O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
+   $null = (Import-PSSession -Session $O365Session -AllowClobber)
 }
 
 try
