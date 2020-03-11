@@ -77,18 +77,18 @@ ForEach ($EV_Entity in $EV_Entities) {
 		$ItemReader = (New-Object -TypeName System.IO.StreamReader -ArgumentList ($ZipItem.Open()))
 
 		$null = (Set-Variable -Name $EV_Entity -Value ($ItemReader.ReadToEnd() | ConvertFrom-Json))
-
+		
+		# Throw error if there is no Identity field, which indicates this isn't a proper backup file
 		If ((Get-Variable -Name $EV_Entity).Value[0].Identity -eq $NULL) {
+			$null = (Set-Variable -Name $EV_Entity -Value $NULL)
 			Throw ('Error')
-		} # Throw error if there is no Identity field, which indicates this isn't a proper backup file
+		}
 	}
 	Catch {
-		Write-Error -Message ($EV_Entity + ".txt could not be found or could not be parsed. Exiting.") -ErrorAction Stop
-		Exit
+		Write-Error -Message ($EV_Entity + '.txt could not be found, was empty or could not be parsed. ' + $EV_Entity + ' will not be restored.') -ErrorAction Continue
 	}
+	$ItemReader.Close()
 }
-
-Write-Host -ForegroundColor Green -Object 'Backup files are OK!'
 
 If (!$KeepExisting) {
 	$Confirm = Read-Host -Prompt 'WARNING: This will ERASE all existing dialplans/voice routes/policies etc prior to restoring from backup. Continue (Y/N)?'
@@ -99,11 +99,17 @@ If (!$KeepExisting) {
 	
 	Write-Host -Object 'Erasing all existing dialplans/voice routes/policies etc.'
 
+	Write-Verbose 'Erasing all tenant dialplans'
 	$null = (Get-CsTenantDialPlan -ErrorAction SilentlyContinue | Remove-CsTenantDialPlan -ErrorAction SilentlyContinue)
+	Write-Verbose 'Erasing all online voice routes'
 	$null = (Get-CsOnlineVoiceRoute -ErrorAction SilentlyContinue | Remove-CsOnlineVoiceRoute -ErrorAction SilentlyContinue)
+	Write-Verbose 'Erasing all online voice routing policies'
 	$null = (Get-CsOnlineVoiceRoutingPolicy -ErrorAction SilentlyContinue | Remove-CsOnlineVoiceRoutingPolicy -ErrorAction SilentlyContinue)
+	Write-Verbose 'Erasing all PSTN usages'
 	$null = (Set-CsOnlinePstnUsage -Identity Global -Usage $NULL -ErrorAction SilentlyContinue)
+	Write-Verbose 'Removing translation rules from PSTN gateways'
 	$null = (Get-CsOnlinePSTNGateway -ErrorAction SilentlyContinue | Set-CsOnlinePSTNGateway -OutbundTeamsNumberTranslationRules $NULL -OutboundPstnNumberTranslationRules $NULL -ErrorAction SilentlyContinue)
+	Write-Verbose 'Removing translation rules'
 	$null = (Get-CsTeamsTranslationRule -ErrorAction SilentlyContinue | Remove-CsTeamsTranslationRule -ErrorAction SilentlyContinue)
 }
 
