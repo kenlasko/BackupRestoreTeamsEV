@@ -12,7 +12,7 @@
 		OPTIONAL: The FQDN your Office365 tenant. Use if your admin account is not in the same domain as your tenant (ie. doesn't use a @tenantname.onmicrosoft.com address)
 
 	.NOTES
-		Version 1.10
+		Based on Version 1.10 of Backup-TeamsEV
 		Build: Feb 04, 2020
 		
 		Copyright © 2020  Ken Lasko
@@ -21,6 +21,9 @@
         
         Expanded to cover more elements
         David Eberhardt
+        https://github.com/DEberhardt/
+        https://davideberhardt.wordpress.com/
+
 
         14-MAY 2020
 
