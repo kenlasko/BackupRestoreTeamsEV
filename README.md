@@ -23,6 +23,10 @@ Run **.\Restore-TeamsEV.ps1** with the path to the backup file to restore. If yo
 
 By default, the script will clean out any existing config, including dialplans, voice routes, voice routing policies, PSTN usages and translation rules. You can override this behaviour by using the **-KeepExisting** switch.
 
+## Running a full backup
+
+Simply run **.\Backup-TeamsTenant.ps1** from a PowerShell prompt. If you are not already connected to your Teams tenant, the script will prompt for authentication. If your admin account is not a @tenantname.onmicrosoft.com account, then you should use the **-OverrideAdminDomain** switch.
+
 ## Authors
 
 **Ken Lasko** 
@@ -31,3 +35,7 @@ By default, the script will clean out any existing config, including dialplans, 
 * https://ucken.blogspot.com
 * https://twitter.com/kenlasko
 * https://www.linkedin.com/in/kenlasko71/
+
+**David Eberhardt**
+* https://github.com/DEberhardt
+* https://davideberhardt.wordpress.com/

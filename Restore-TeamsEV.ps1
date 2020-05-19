@@ -79,7 +79,7 @@ ForEach ($EV_Entity in $EV_Entities) {
 		$null = (Set-Variable -Name $EV_Entity -Value ($ItemReader.ReadToEnd() | ConvertFrom-Json))
 		
 		# Throw error if there is no Identity field, which indicates this isn't a proper backup file
-		If ((Get-Variable -Name $EV_Entity).Value[0].Identity -eq $NULL) {
+		If ($null -eq ((Get-Variable -Name $EV_Entity).Value[0].Identity)) {
 			$null = (Set-Variable -Name $EV_Entity -Value $NULL)
 			Throw ('Error')
 		}
