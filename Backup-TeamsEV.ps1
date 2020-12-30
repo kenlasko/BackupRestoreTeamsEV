@@ -1,17 +1,17 @@
 <#
 	.SYNOPSIS
 		A script to automatically backup a Microsoft Teams Enterprise Voice configuration.
-	
+
 	.DESCRIPTION
 		Automates the backup of Microsoft Teams Enterprise Voice normalization rules, dialplans, voice policies, voice routes, PSTN usages and PSTN GW translation rules for various countries.
-	
+
 	.PARAMETER OverrideAdminDomain
 		OPTIONAL: The FQDN your Office365 tenant. Use if your admin account is not in the same domain as your tenant (ie. doesn't use a @tenantname.onmicrosoft.com address)
 
 	.NOTES
 		Version 1.10
 		Build: Feb 04, 2020
-		
+
 		Copyright © 2020  Ken Lasko
 		klasko@ucdialplans.com
 		https://www.ucdialplans.com
@@ -28,13 +28,13 @@ param
 $Filenames = 'Dialplans.txt', 'VoiceRoutes.txt', 'VoiceRoutingPolicies.txt', 'PSTNUsages.txt', 'TranslationRules.txt', 'PSTNGateways.txt'
 
 If ((Get-PSSession | Where-Object -FilterScript {
-         $_.ComputerName -like '*.online.lync.com'
+	$_.Computername -match "online.lync.com" -or $_.ComputerName -eq "api.interfaces.records.teams.microsoft.com"
 }).State -eq 'Opened') {
 	Write-Host -Object 'Using existing session credentials'
-} 
+}
 Else {
 	Write-Host -Object 'Logging into Office 365...'
-   
+
 	If ($OverrideAdminDomain) {
 		$O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
 	}
@@ -51,7 +51,7 @@ Try {
 	$null = (Get-CsOnlinePstnUsage | ConvertTo-Json | Out-File -FilePath PSTNUsages.txt -Force -Encoding utf8)
 	$null = (Get-CsTeamsTranslationRule | ConvertTo-Json | Out-File -FilePath TranslationRules.txt -Force -Encoding utf8)
 	$null = (Get-CsOnlinePSTNGateway | ConvertTo-Json | Out-File -FilePath PSTNGateways.txt -Force -Encoding utf8)
-} 
+}
 Catch {
 	Write-Error -Message 'There was an error backing up the MS Teams Enterprise Voice configuration.'
 	Exit
