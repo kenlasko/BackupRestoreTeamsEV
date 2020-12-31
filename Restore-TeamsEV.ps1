@@ -52,7 +52,9 @@ Catch {
 	Exit
 }
 
-If ((Get-PSSession | Where-Object -FilterScript {$_.ComputerName -like '*.online.lync.com'}).State -eq 'Opened') {
+If ((Get-PSSession | Where-Object -FilterScript {
+	$_.Computername -match "online.lync.com" -or $_.ComputerName -eq "api.interfaces.records.teams.microsoft.com"
+}).State -eq 'Opened') {
 	Write-Host -Object 'Using existing session credentials'
 }
 Else {
@@ -77,7 +79,7 @@ ForEach ($EV_Entity in $EV_Entities) {
 		$ItemReader = (New-Object -TypeName System.IO.StreamReader -ArgumentList ($ZipItem.Open()))
 
 		$null = (Set-Variable -Name $EV_Entity -Value ($ItemReader.ReadToEnd() | ConvertFrom-Json))
-		
+
 		# Throw error if there is no Identity field, which indicates this isn't a proper backup file
 		If ($null -eq ((Get-Variable -Name $EV_Entity).Value[0].Identity)) {
 			$null = (Set-Variable -Name $EV_Entity -Value $NULL)
@@ -96,7 +98,7 @@ If (!$KeepExisting) {
 		Write-Host -Object 'Exiting without making changes.'
 		Exit
 	}
-	
+
 	Write-Host -Object 'Erasing all existing dialplans/voice routes/policies etc.'
 
 	Write-Verbose 'Erasing all tenant dialplans'
@@ -125,7 +127,7 @@ ForEach ($Dialplan in $Dialplans) {
 		OptimizeDeviceDialing = $Dialplan.OptimizeDeviceDialing
 		Description = $Dialplan.Description
 	}
-	
+
 	# Only include the external access prefix if one is defined. MS throws an error if you pass a null/empty ExternalAccessPrefix
 	If ($Dialplan.ExternalAccessPrefix) {
 		$DPDetails.Add("ExternalAccessPrefix", $Dialplan.ExternalAccessPrefix)
@@ -136,12 +138,12 @@ ForEach ($Dialplan in $Dialplans) {
 	}
 	Else {
 		$null = (New-CsTenantDialPlan @DPDetails)
-	}	
+	}
 
 	# Create a new Object
 	$NormRules = @()
-   
-	ForEach ($NormRule in $Dialplan.NormalizationRules) {		
+
+	ForEach ($NormRule in $Dialplan.NormalizationRules) {
 		$NRDetails = @{
 			Parent = $Dialplan.Identity
 			Name = [regex]::Match($NormRule, '(?ms)Name=(.*?);').Groups[1].Value
@@ -178,7 +180,7 @@ ForEach ($VoiceRoute in $VoiceRoutes) {
 		OnlinePstnGatewayList = $VoiceRoute.OnlinePstnGatewayList
 		Description = $VoiceRoute.Description
 	}
-	
+
 	If ($VRExists) {
 		$null = (Set-CsOnlineVoiceRoute @VRDetails)
 	}
@@ -199,7 +201,7 @@ ForEach ($VoiceRoutingPolicy in $VoiceRoutingPolicies) {
 		OnlinePstnUsages = $VoiceRoutingPolicy.OnlinePstnUsages
 		Description = $VoiceRoutingPolicy.Description
 	}
-	
+
 	If ($VPExists) {
 		$null = (Set-CsOnlineVoiceRoutingPolicy @VPDetails)
 	}
@@ -214,7 +216,7 @@ Write-Host -Object 'Restoring outbound translation rules'
 ForEach ($TranslationRule in $TranslationRules) {
 	Write-Verbose "Restoring $($TranslationRule.Identity) translation rule"
 	$TRExists = (Get-CsTeamsTranslationRule -Identity $TranslationRule.Identity -ErrorAction SilentlyContinue).Identity
-	
+
 	$TRDetails = @{
 		Identity = $TranslationRule.Identity
 		Pattern = $TranslationRule.Pattern
@@ -236,11 +238,11 @@ Write-Host -Object 'Re-adding translation rules to PSTN gateways'
 ForEach ($PSTNGateway in $PSTNGateways) {
 	Write-Verbose "Restoring translation rules to $($PSTNGateway.Identity)"
 	$GWExists = (Get-CsOnlinePSTNGateway -Identity $PSTNGateway.Identity -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Identity)
-	
+
 	$GWDetails = @{
 		Identity = $PSTNGateway.Identity
-		OutboundTeamsNumberTranslationRules = $PSTNGateway.OutboundTeamsNumberTranslationRules
-		OutboundPstnNumberTranslationRules = $PSTNGateway.OutboundPstnNumberTranslationRules 
+		OutbundTeamsNumberTranslationRules = $PSTNGateway.OutbundTeamsNumberTranslationRules #Sadly Outbund isn't a spelling mistake here. That's what the command uses.
+		OutboundPstnNumberTranslationRules = $PSTNGateway.OutboundPstnNumberTranslationRules
 		InboundTeamsNumberTranslationRules = $PSTNGateway.InboundTeamsNumberTranslationRules
 		InboundPstnNumberTranslationRules = $PSTNGateway.InboundPstnNumberTranslationRules
 	}

@@ -4,21 +4,21 @@
 <#
 	.SYNOPSIS
 		A script to automatically backup a Microsoft Teams Tenant configuration.
-	
+
 	.DESCRIPTION
 		Automates the backup of Microsoft Teams.
-	
+
 	.PARAMETER OverrideAdminDomain
 		OPTIONAL: The FQDN your Office365 tenant. Use if your admin account is not in the same domain as your tenant (ie. doesn't use a @tenantname.onmicrosoft.com address)
 
 	.NOTES
 		Based on Version 1.10 of Backup-TeamsEV
 		Build: Feb 04, 2020
-		
+
 		Copyright © 2020  Ken Lasko
 		klasko@ucdialplans.com
         https://www.ucdialplans.com
-        
+
         Expanded to cover more elements
         David Eberhardt
         https://github.com/DEberhardt/
@@ -41,13 +41,13 @@ param
 $Filenames = '*.txt'
 
 If ((Get-PSSession | Where-Object -FilterScript {
-         $_.ComputerName -like '*.online.lync.com'
+  $_.Computername -match "online.lync.com" -or $_.ComputerName -eq "api.interfaces.records.teams.microsoft.com"
 }).State -eq 'Opened') {
 	Write-Host -Object 'Using existing session credentials'
-} 
+}
 Else {
 	Write-Host -Object 'Logging into Office 365...'
-   
+
 	If ($OverrideAdminDomain) {
 		$O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
 	}
@@ -77,7 +77,7 @@ Else {
   $null = (Get-CsTenantFederationConfiguration -WarningAction SilentlyContinue -ErrorAction SilentlyContinue | ConvertTo-Json | Out-File -FilePath "Get-CsTenantFederationConfiguration.txt" -Force -Encoding utf8)
   $null = (Get-CsTenantNetworkConfiguration -WarningAction SilentlyContinue -ErrorAction SilentlyContinue | ConvertTo-Json | Out-File -FilePath "Get-CsTenantNetworkConfiguration.txt" -Force -Encoding utf8)
   $null = (Get-CsTenantPublicProvider -WarningAction SilentlyContinue -ErrorAction SilentlyContinue | ConvertTo-Json | Out-File -FilePath "Get-CsTenantPublicProvider.txt" -Force -Encoding utf8)
-  
+
   # Tenant Policies (except voice)
   $null = (Get-CsTeamsUpgradePolicy -WarningAction SilentlyContinue -ErrorAction SilentlyContinue | ConvertTo-Json | Out-File -FilePath "Get-CsTeamsUpgradePolicy.txt" -Force -Encoding utf8)
   $null = (Get-CsTeamsAppPermissionPolicy -WarningAction SilentlyContinue -ErrorAction SilentlyContinue | ConvertTo-Json | Out-File -FilePath "Get-CsTeamsAppPermissionPolicy.txt" -Force -Encoding utf8)
