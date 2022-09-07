@@ -40,23 +40,13 @@ param
 
 $Filenames = '*.txt'
 
-If ((Get-PSSession | Where-Object -FilterScript {
-  $_.Computername -match "online.lync.com" -or $_.ComputerName -eq "api.interfaces.records.teams.microsoft.com"
-}).State -eq 'Opened') {
-	Write-Host -Object 'Using existing session credentials'
+Try {
+	Connect-MicrosoftTeams
 }
-Else {
-	Write-Host -Object 'Logging into Office 365...'
-
-	If ($OverrideAdminDomain) {
-		$O365Session = (New-CsOnlineSession -OverrideAdminDomain $OverrideAdminDomain)
-	}
-	Else {
-		$O365Session = (New-CsOnlineSession)
-	}
-	$null = (Import-PSSession -Session $O365Session -AllowClobber)
+Catch {
+	Write-Warning 'Microsoft Teams PowerShell module not installed. Please install via Install-Module MicrosoftTeams, then run the script again.'
+	Break
 }
-
 
   # Tenant Configuration
   $null = (Get-CsOnlineDialInConferencingBridge -WarningAction SilentlyContinue -ErrorAction SilentlyContinue | ConvertTo-Json | Out-File -FilePath "Get-CsOnlineDialInConferencingBridge.txt" -Force -Encoding utf8)
